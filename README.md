@@ -1,2 +1,11 @@
-# spit
-Scripting for piles of idempotent tasks
+# Status
+
+README under construction
+
+# Why
+
+...
+
+# Demo
+
+...
