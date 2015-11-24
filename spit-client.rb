@@ -84,7 +84,12 @@ class SpitClient
     @server_port_number = server_port_number
   end
   def send(msg)
-    socket = TCPSocket.open(@server_host_name, @server_port_number)
+    begin
+      socket = TCPSocket.open(@server_host_name, @server_port_number)
+    rescue Errno::ECONNREFUSED => e
+      $stderr.puts "#{$us}: could not connect to #{@server_host_name}:#{@server_port_number}"
+      exit 1
+    end
     socket.puts(msg)
     socket.close
     nil

@@ -7,7 +7,7 @@ spit_args="-s localhost"
 program_to_run_with_task_id="./sample-task-script.rb"
 workdir="./work-dir"
 #npar=50
-npar=5
+npar=10
 
 spit_client="$ourdir/spit-client.rb $spit_args"
 

@@ -11,12 +11,12 @@ $default_port_number = 2345
 # ================================================================
 def usage()
   $stderr.puts <<EOF
-Usage: #{$us} [options] {workfile}
+Usage: #{$us} [options] {workfile} {donefile}
 
 Options:
 -p {port number}   Default #{$default_port_number}"
 
-The workfile should contain work IDs, one per line.  What this mean is up to
+The workfile should contain work IDs, one per line.  What this means is up to
 the client; nominally they will be program arguments to be executed by worker
 programs.
 EOF
@@ -43,15 +43,11 @@ def main()
   rescue GetoptLong::Error
     usage
   end
-  usage unless ARGV.length == 1
+  usage unless ARGV.length == 2
   infile = ARGV.shift
+  donefile = ARGV.shift
 
-  task_ids_to_do = Set.new
-  File.foreach(infile) do |line|
-    task_ids_to_do << line.chomp
-  end
-
-  server = SpitServer.new(task_ids_to_do, port_number)
+  server = SpitServer.new(infile, donefile, port_number)
   server.server_loop
 end
 
@@ -59,16 +55,35 @@ end
 class SpitServer
 
   # ----------------------------------------------------------------
-  def initialize(task_ids_to_do, port_number)
-    @task_ids_to_do    = task_ids_to_do
+  def initialize(infile, donefile, port_number)
+
+    @task_ids_to_do    = Set.new
     @task_ids_assigned = Set.new
     @task_ids_done     = Set.new
     @task_ids_failed   = Set.new
+
+    puts "#{format_time},op=read_in_file,#{format_counts}"
+    File.foreach(infile) do |line|
+      task_id = line.chomp
+      @task_ids_to_do << task_id
+    end
+
+    puts "#{format_time},op=read_done_file,#{format_counts}"
+    if File.exist?(donefile)
+      File.foreach(donefile) do |line|
+        task_id = line.chomp
+        @task_ids_done << task_id
+        @task_ids_to_do.delete(task_id)
+      end
+    end
+
+    @donefile = donefile
 
     @port_number   = port_number
     @tcp_server    = TCPServer.new(port_number)
 
     puts "#{format_time},op=ready,port=#{port_number},#{format_counts}"
+
   end
 
   # ----------------------------------------------------------------
@@ -86,6 +101,10 @@ class SpitServer
   # ----------------------------------------------------------------
   def server_loop
     loop do
+      if @task_ids_to_do.length == 0
+        puts "#{format_time},op=exit,#{format_counts}"
+        break
+      end
       client = @tcp_server.accept # blocking call
       handle_client(client)
       client.close
@@ -153,6 +172,9 @@ class SpitServer
     if @task_ids_assigned.include?(task_id)
       @task_ids_assigned.delete(task_id)
       @task_ids_done << task_id
+
+      File.open(@donefile, "a") {|handle| handle.puts(payload)}
+
       puts "#{format_time},op=mark-done,task_id=#{payload},ok=true,#{format_counts}"
     else
       puts "#{format_time},op=mark-done,task_id=#{payload},ok=rando,#{format_counts}"
