@@ -3,13 +3,12 @@
 ourdir=$(dirname $0)
 
 # ----------------------------------------------------------------
-spit_args="-s localhost"
 program_to_run_with_task_id="./sample-task-script.rb"
+spit_client_args="-s localhost"
 workdir="./work-dir"
-#npar=50
-npar=10
+npar=20
 
-spit_client="$ourdir/spit-client.rb $spit_args"
+spit_client="$ourdir/spit-client.rb $spit_client_args"
 
 # ----------------------------------------------------------------
 worker() {
