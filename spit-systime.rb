@@ -3,4 +3,7 @@ STDOUT.sync = true
 STDERR.sync = true
 require 'time'
 
-puts Time.now.to_f
+begin
+  puts Time.now.to_f
+rescue Errno::EPIPE
+end

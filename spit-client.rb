@@ -87,7 +87,9 @@ class SpitClient
     begin
       socket = TCPSocket.open(@server_host_name, @server_port_number)
     rescue Errno::ECONNREFUSED => e
-      $stderr.puts "#{$us}: could not connect to #{@server_host_name}:#{@server_port_number}"
+      #$stderr.puts "#{$us}: could not connect to #{@server_host_name}:#{@server_port_number}"
+      #exit 1
+      puts 'spit-server-unavailable'
       exit 1
     end
     socket.puts(msg)
@@ -97,16 +99,20 @@ class SpitClient
   def ask(msg)
     begin
       socket = TCPSocket.open(@server_host_name, @server_port_number)
+      socket.puts(msg)
+      reply = socket.gets.chomp
+      socket.close
     rescue Errno::ECONNREFUSED => e
-      $stderr.puts "#{$us}: could not connect to #{@server_host_name}:#{@server_port_number}"
-      exit 1
+      #$stderr.puts "#{$us}: could not connect to #{@server_host_name}:#{@server_port_number}"
+      #exit 1
+      reply = 'spit-server-unavailable'
     end
-    socket.puts(msg)
-    reply = socket.gets.chomp
-    socket.close
     reply
   end
 end
 
 # ================================================================
-main()
+begin
+  main
+rescue Errno::EPIPE
+end

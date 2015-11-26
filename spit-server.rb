@@ -159,9 +159,8 @@ class SpitServer
 
   # ----------------------------------------------------------------
   def handle_show(client)
-    puts "#{format_time},op=show,#{format_counts}"
     begin
-    client.puts "#{format_counts}"
+    client.puts "#{format_time},#{format_counts}"
     rescue Errno::EPIPE
     end
   end
