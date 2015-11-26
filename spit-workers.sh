@@ -1,8 +1,6 @@
 #!/bin/bash
 
-#set -e
 set -u
-set -o pipefail
 
 us=$(basename $0)
 ourdir=$(dirname $0)
@@ -143,7 +141,6 @@ main() {
   wait
 
 }
-
 
 # ----------------------------------------------------------------
 main "$@"
