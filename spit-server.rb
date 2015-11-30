@@ -103,7 +103,9 @@ class SpitServer
     loop do
       if @task_ids_to_do.length == 0
         puts "#{format_time},op=exit,#{format_counts}"
-        break
+        # Don't break out of the loop: we're done assigning but workers are
+        # still running. Stay around waiting for their final mark-done messages
+        # to come in.
       end
       client = @tcp_server.accept # blocking call
       handle_client(client)
@@ -143,7 +145,7 @@ class SpitServer
       task_id = @task_ids_to_do.first
       begin
         client.puts "#{task_id}"
-        puts "#{format_time},op=give,task_id=#{task_id},#{format_counts}"
+        puts "#{format_time},op=give,#{format_counts},task_id=#{task_id}"
         @task_ids_assigned << task_id
         @task_ids_to_do.delete(task_id)
       rescue Errno::EPIPE
@@ -174,9 +176,9 @@ class SpitServer
 
       File.open(@donefile, "a") {|handle| handle.puts(payload)}
 
-      puts "#{format_time},op=mark-done,task_id=#{payload},ok=true,#{format_counts}"
+      puts "#{format_time},op=mark-done,ok=true,#{format_counts},task_id=#{payload}"
     else
-      puts "#{format_time},op=mark-done,task_id=#{payload},ok=rando,#{format_counts}"
+      puts "#{format_time},op=mark-done,ok=rando,#{format_counts},task_id=#{payload}"
     end
   end
 
@@ -186,9 +188,9 @@ class SpitServer
     if @task_ids_assigned.include?(task_id)
       @task_ids_assigned.delete(task_id)
       @task_ids_failed << task_id
-      puts "#{format_time},op=mark-failed,task_id=#{payload},ok=true,#{format_counts}"
+      puts "#{format_time},op=mark-failed,ok=true,#{format_counts},task_id=#{payload}"
     else
-      puts "#{format_time},op=mark-failed,task_id=#{payload},ok=rando,#{format_counts}"
+      puts "#{format_time},op=mark-failed,ok=rando,#{format_counts},task_id=#{payload}"
     end
   end
 
