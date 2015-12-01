@@ -91,10 +91,18 @@ class SpitServer
     "time=#{Time.now.to_f}"
   end
   def format_counts
-    string  = "ntodo=#{@task_ids_to_do.length}"
-    string += ",nassigned=#{@task_ids_assigned.length}"
-    string += ",ndone=#{@task_ids_done.length},"
-    string += "nfailed=#{@task_ids_failed.length}"
+    ntodo     = @task_ids_to_do.length
+    nassigned = @task_ids_assigned.length
+    ndone     = @task_ids_done.length
+    nfailed   = @task_ids_failed.length
+    ntotal = ntodo + nassigned + ndone + nfailed
+
+    string  = "ntodo=#{ntodo}"
+    string += ",nassigned=#{nassigned}"
+    string += ",ndone=#{ndone}"
+    string += ",nfailed=#{nfailed}"
+    string += ",ntotal=#{ntotal}"
+
     string
   end
 
