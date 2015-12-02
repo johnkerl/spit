@@ -123,7 +123,11 @@ class SpitClient:
 			sock.connect(self.server_address)
 			sock.sendall("%s,%s,%s\n" % (self.hostname, self.worker_id, msg))
 		except socket.error, exc:
-			return 'error'
+			err = exc.args[0]
+			if err == errno.ECONNREFUSED:
+				return 'spit-server-unavailable'
+			else:
+				return 'error'
 		reply = ''
 		while True:
 			piece = '?'
