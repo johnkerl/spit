@@ -181,9 +181,17 @@ class SpitServer:
 
 		line = request.rstrip()
 
-		client_hostname, worker_id, msg = line.split(",", 2)
+		fields1 = line.split(',', 2)
+		if len(fields1) != 3:
+			print("%s,op=drop1,line=%s" % (self.format_time(), line))
+			return
+		client_hostname, worker_id, msg = fields1
 
-		verb, payload = msg.split(':', 1)
+		fields2 = msg.split(':', 1)
+		if len(fields2) != 2:
+			print("%s,op=drop2,line=%s,msg=%s" % (self.format_time(), line, msg))
+			return
+		verb, payload = fields2
 
 		if verb == 'wreq':
 			reply = self.handle_wreq(client_hostname, worker_id)
@@ -199,7 +207,7 @@ class SpitServer:
 			reply = self.handle_stats(client_hostname, worker_id, payload)
 		else:
 			reply = 'dropped'
-			print("%s,op=drop,verb=%s,payload=%s" % (self.format_time(), verb, payload))
+			print("%s,op=drop3,verb=%s,payload=%s" % (self.format_time(), verb, payload))
 			sys.stdout.flush()
 		client.sendall(reply)
 
