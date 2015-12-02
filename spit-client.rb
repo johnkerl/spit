@@ -72,6 +72,10 @@ def main()
     usage unless ARGV.length == 1
     task_id = ARGV[0]
     client.send "mark-done:#{task_id}"
+  elsif verb == 'mark-failed'
+    usage unless ARGV.length == 1
+    task_id = ARGV[0]
+    client.send "mark-failed:#{task_id}"
   else
     usage
   end

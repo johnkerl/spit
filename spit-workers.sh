@@ -7,10 +7,14 @@ ourdir=$(dirname $0)
 
 program_to_run_with_task_id=
 work_dir=
-spit_client=$ourdir/spit-client.rb
 num_workers=1
 max_tasks_per_worker=
-redirect_output=true
+redirect_output=file
+
+#spit_client_program=$ourdir/spit-client.rb
+#spit_systime_program=$ourdir/spit-systime.rb
+spit_client_program=$ourdir/spit-client.py
+spit_systime_program=$ourdir/spit-systime.py
 
 # ----------------------------------------------------------------
 usage() {
@@ -23,8 +27,8 @@ Options:
 -d {work directory}       Required.
 -x {max parallel workers} Defaults to 1.
 -n {max tasks per worker} Defaults to unlimited (run until done).
--s {hostname}             Defaults to spit-client.rb default.
--p {hostname}             Defaults to spit-client.rb default.
+-s {hostname}             Defaults to spit-client.py default.
+-p {hostname}             Defaults to spit-client.py default.
 -o                        Let worker stdout/stderr go to the screen. (Default
                           is to redirect worker stdout/stderr to files in the
                           work directory.)
@@ -46,7 +50,7 @@ worker() {
       fi
     fi
 
-    task_id=$($spit_client ask)
+    task_id=$($spit_client -w $worker_id ask)
     if [ "$task_id" == 'no-work-left' ]; then
       echo "worker_id=$worker_id,op=done,num_run=$num_run"
       break
@@ -55,19 +59,29 @@ worker() {
       echo "worker_id=$worker_id,op=server-down,num_run=$num_run"
       break
     fi
+    if [ "$task_id" == 'error' ]; then
+      echo "worker_id=$worker_id,op=error,num_run=$num_run"
+      continue
+    fi
 
-    start=$($ourdir/spit-systime.rb)
+    start=$($spit_systime_program)
 
-    $program_to_run_with_task_id $task_id
-    status=$?
+    if [ "$redirect_output" = "socket" ]; then
+      output=`$program_to_run_with_task_id $task_id`
+      status=$?
+      $spit_client -w $worker_id "output" "$output"
+    else
+      $program_to_run_with_task_id $task_id
+      status=$?
+    fi
 
-    end=$($ourdir/spit-systime.rb)
-    $spit_client "stats" "start=$start,end=$end"
+    end=$($spit_systime_program)
+    $spit_client -w $worker_id "stats" "start=$start,end=$end"
 
     if [ $status -eq 0 ]; then
-      $spit_client "mark-done" "$task_id"
+      $spit_client -w $worker_id "mark-done" "$task_id"
     else
-      $spit_client "mark-failed" "$task_id"
+      $spit_client -w $worker_id "mark-failed" "$task_id"
     fi
 
     num_run=$[num_run+1]
@@ -80,7 +94,7 @@ worker() {
 main() {
   spit_server_host_name_args=
   spit_server_port_number_args=
-  while getopts c:d:x:n:s:p:oh? f
+  while getopts c:d:x:n:s:p:oPh? f
   do
   	case $f in
   	c)  program_to_run_with_task_id="$OPTARG"; continue;;
@@ -89,7 +103,8 @@ main() {
   	n)  max_tasks_per_worker="$OPTARG"; continue;;
   	s)  spit_server_host_name_args=" -s $OPTARG"; continue;;
   	p)  spit_server_port_number_args=" -p $OPTARG"; continue;;
-  	o)  redirect_output=false; continue;;
+  	o)  redirect_output=terminal; continue;;
+  	P)  redirect_output=socket; continue;;
   	h)  usage;          continue;;
   	\?) echo; usage;;
   	esac
@@ -107,14 +122,14 @@ main() {
     echo "" 1>&2
     usage
   fi
-  if [ -z "$work_dir" -a "$redirect_output" = "true" ]; then
+  if [ -z "$work_dir" -a "$redirect_output" = "file" ]; then
     echo "$0: need work_dir." 1>&2
     echo "" 1>&2
     usage
   fi
 
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  spit_client="$ourdir/spit-client.rb$spit_server_host_name_args$spit_server_port_number_args"
+  spit_client="$spit_client_program$spit_server_host_name_args$spit_server_port_number_args"
 
   if [ ! -z "$work_dir" ]; then
     mkdir -p $work_dir
@@ -128,7 +143,7 @@ main() {
   while [ $worker_id -lt $num_workers ]; do
     worker_id=$[worker_id+1]
     uuid=${batch_id}-${worker_id}
-    if [ "$redirect_output" = "true" ]; then
+    if [ "$redirect_output" = "file" ]; then
       worker $worker_id 1> $work_dir/$uuid.out 2> $work_dir/$uuid.err &
       pid=$!
     else
@@ -136,7 +151,7 @@ main() {
       pid=$!
     fi
     pids="$pids $pid"
-    trap 'kill $pids' 1 2 3 15
+    trap 'kill $pids; sleep 1; kill $pids' 1 2 3 15
   done
   wait
 
