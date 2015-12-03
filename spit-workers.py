@@ -156,6 +156,10 @@ def worker(worker_id, params):
 
 		task_id = spit_client.send("wreq:")
 
+		if task_id == 'exit-now':
+			cprint("worker_id=%s,op=exit-now,num_run=%d" % (worker_id, num_run))
+			break
+
 		if task_id == 'no-work-left':
 			cprint("worker_id=%s,op=done,num_run=%d" % (worker_id, num_run))
 			#break

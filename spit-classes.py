@@ -71,7 +71,7 @@ class SpitClient:
 # ================================================================
 class SpitServer:
 
-	def __init__(self, port_number, infile, outfile, donefile):
+	def __init__(self, port_number, infile, outfile, donefile, reply_exit_now):
 		self.task_ids_to_do    = set()
 		self.task_ids_assigned = set()
 		self.task_ids_done     = set()
@@ -91,6 +91,8 @@ class SpitServer:
 		else:
 			self.outhandle = self.create_append_handle(outfile)
 		self.donehandle = self.create_append_handle(donefile)
+
+		self.reply_exit_now = reply_exit_now
 
 		self.tcp_server = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
 		self.tcp_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -224,6 +226,8 @@ class SpitServer:
 				((self.format_time(), client_hostname, worker_id, self.format_counts(), task_id)))
 			self.task_ids_assigned.add(task_id)
 			return task_id
+		elif self.reply_exit_now:
+			return "exit-now"
 		else:
 			return "no-work-left"
 
