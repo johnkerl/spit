@@ -23,8 +23,8 @@ Options:
 -d {work directory}       Required.
 -x {max parallel workers} Defaults to 1.
 -n {max tasks per worker} Defaults to unlimited (run until done).
--s {hostname}             Defaults to spit-client.rb default.
--p {hostname}             Defaults to spit-client.rb default.
+-s {hostname}             Defaults to spit-client.py default.
+-p {hostname}             Defaults to spit-client.py default.
 -O                        Let worker stdout/stderr go to the screen. (Default
                           is to redirect worker stdout/stderr to files in the
                           work directory.)
