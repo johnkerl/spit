@@ -29,7 +29,10 @@ Options:
 -n {max tasks per worker} Defaults to unlimited (run until done).
 -s {hostname}             Defaults to spit-client.py default.
 -p {hostname}             Defaults to spit-client.py default.
--o                        Let worker stdout/stderr go to the screen. (Default
+-O                        Let worker stdout/stderr go to the screen. (Default
+                          is to redirect worker stdout/stderr to files in the
+                          work directory.)
+-P                        Send worker stdout to the spit server. (Default
                           is to redirect worker stdout/stderr to files in the
                           work directory.)
 EOF
@@ -94,20 +97,20 @@ worker() {
 main() {
   spit_server_host_name_args=
   spit_server_port_number_args=
-  while getopts c:d:x:n:s:p:oPh? f
+  while getopts c:d:x:n:s:p:OPh? f
   do
-  	case $f in
-  	c)  program_to_run_with_task_id="$OPTARG"; continue;;
-  	d)  work_dir="$OPTARG"; continue;;
-  	x)  num_workers="$OPTARG"; continue;;
-  	n)  max_tasks_per_worker="$OPTARG"; continue;;
-  	s)  spit_server_host_name_args=" -s $OPTARG"; continue;;
-  	p)  spit_server_port_number_args=" -p $OPTARG"; continue;;
-  	o)  redirect_output=terminal; continue;;
-  	P)  redirect_output=socket; continue;;
-  	h)  usage;          continue;;
-  	\?) echo; usage;;
-  	esac
+    case $f in
+    c)  program_to_run_with_task_id="$OPTARG"; continue;;
+    d)  work_dir="$OPTARG"; continue;;
+    x)  num_workers="$OPTARG"; continue;;
+    n)  max_tasks_per_worker="$OPTARG"; continue;;
+    s)  spit_server_host_name_args=" -s $OPTARG"; continue;;
+    p)  spit_server_port_number_args=" -p $OPTARG"; continue;;
+    O)  redirect_output=terminal; continue;;
+    P)  redirect_output=socket; continue;;
+    h)  usage;          continue;;
+    \?) echo; usage;;
+    esac
   done
   shift $(($OPTIND-1))
   non_option_args="$@"

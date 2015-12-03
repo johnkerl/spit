@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 
-import sys, getopt, socket, errno
+import sys, os, getopt, socket, errno
 
-DEFAULT_SERVER_HOST_NAME   = 'localhost'
-DEFAULT_SERVER_PORT_NUMBER = 2345
-DEFAULT_WORKER_ID          = "0"
+OURDIR = os.path.dirname(sys.argv[0])
+if OURDIR == '':
+	OURDIR = '.'
+execfile(OURDIR + '/spit-classes.py')
+
+DEFAULT_WORKER_ID = "0"
 
 # ================================================================
 def usage(ostream):
@@ -21,21 +24,13 @@ Options:
 -s {server host name} Defaults to %s
 -p {server port number} Defaults to %d
 -w {worker ID} Defaults to %s
-""" % (a,a,a,a,a,a,DEFAULT_SERVER_HOST_NAME,DEFAULT_SERVER_PORT_NUMBER,DEFAULT_WORKER_ID)
+""" % (a,a,a,a,a,a,DEFAULT_SPIT_SERVER_HOST_NAME,DEFAULT_SPIT_SERVER_PORT_NUMBER,DEFAULT_WORKER_ID)
 	ostream.write(string)
 
 # ----------------------------------------------------------------
-# Concurrent print: python's print is *two* write calls, one for the string and
-# one for the newline, and if there are multiple processes, those two can
-# interleave on the terminal.
-def cprint(s):
-	#sys.stdout.write('{'+s+"}\n")
-	sys.stdout.write(s+"\n")
-
-# ----------------------------------------------------------------
 def main():
-	server_host_name   = DEFAULT_SERVER_HOST_NAME
-	server_port_number = DEFAULT_SERVER_PORT_NUMBER
+	server_host_name   = DEFAULT_SPIT_SERVER_HOST_NAME
+	server_port_number = DEFAULT_SPIT_SERVER_PORT_NUMBER
 	worker_id          = DEFAULT_WORKER_ID
 
 	try:
@@ -75,78 +70,34 @@ def main():
 		if non_option_arg_count != 0:
 			usage(sys.stderr)
 			sys.exit(1)
-		task_id = client.send("wreq:")
+		task_id = client.send_wreq()
 		cprint(task_id)
 	elif verb == 'show':
 		if non_option_arg_count != 0:
 			usage(sys.stderr)
 			sys.exit(1)
-
-		output = client.send("show:")
+		output = client.send_show()
 		cprint(output)
 	elif verb == 'output':
-		text = ",".join(non_option_args)
-		client.send("output:"+text)
+		client.send_output(",".join(non_option_args))
 	elif verb == 'stats':
-		text = ",".join(non_option_args)
-		client.send("stats:"+text)
+		client.send_stats(",".join(non_option_args))
 	elif verb == 'mark-done':
 		if non_option_arg_count != 1:
 			usage(sys.stderr)
 			sys.exit(1)
 		task_id = non_option_args[0]
-		client.send("mark-done:"+task_id)
+		client.send_mark_done(task_id)
 	elif verb == 'mark-failed':
 		if non_option_arg_count != 1:
 			usage(sys.stderr)
 			sys.exit(1)
 		task_id = non_option_args[0]
-		client.send("mark-failed:"+task_id)
+		client.send_mark_failed(task_id)
 	else:
 		usage(sys.stderr)
 		sys.exit(1)
 
-
 # ================================================================
-BUFSIZE=1024
-class SpitClient:
-	def __init__(self, server_host_name, server_port_number, worker_id):
-		self.server_host_name = server_host_name
-		self.server_port_number = server_port_number
-		self.server_address = (server_host_name, server_port_number)
-		self.hostname = socket.gethostname()
-		self.worker_id = worker_id
-
-	def send(self, msg):
-		sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-		try:
-			sock.connect(self.server_address)
-			sock.sendall("%s,%s,%s\n" % (self.hostname, self.worker_id, msg))
-		except socket.error, exc:
-			err = exc.args[0]
-			if err == errno.ECONNREFUSED:
-				return 'spit-server-unavailable'
-			else:
-				return 'error'
-		reply = ''
-		while True:
-			piece = '?'
-			try:
-				piece = sock.recv(BUFSIZE)
-				if len(piece) == 0: # server-side socket close
-					break
-				reply += piece
-			except socket.error, exc:
-				err = exc.args[0]
-				if err == errno.EAGAIN or err == errno.EWOULDBLOCK:
-					pass
-				elif err == errno.EPIPE:
-					return 'error'
-		sock.close()
-		if reply == '':
-			return 'error'
-		return reply.rstrip()
-
-# ================================================================
-main()
-
+if __name__ == "__main__":
+	main()
