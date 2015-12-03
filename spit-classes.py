@@ -273,27 +273,6 @@ class SpitServer:
 		return "ack"
 
 	# ----------------------------------------------------------------
-	def write_to_out_file(self, payload):
-		mode = 'a'
-		try:
-			file_handle = open(self.outfile, mode)
-			file_handle.write(payload + "\n")
-		except:
-			print >> sys.stderr, \
-				"%s: couldn't open file \"%s\" for mode \"%s\"." \
-				% (sys.argv[0], self.outfile, mode)
-			sys.exit(1)
-		file_handle.close()
-
-	# ----------------------------------------------------------------
 	def mark_to_done_file(self, task_id):
-		mode = 'a'
-		try:
-			file_handle = open(self.donefile, mode)
-			file_handle.write(task_id + "\n")
-		except:
-			print >> sys.stderr, \
-				"%s: couldn't open file \"%s\" for mode \"%s\"." \
-				% (sys.argv[0], self.donefile, mode)
-			sys.exit(1)
-		file_handle.close()
+		self.donehandle.write(task_id+'\n')
+		self.donehandle.flush()
