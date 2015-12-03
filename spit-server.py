@@ -2,7 +2,7 @@
 
 # xxx to do:
 # * estdone file; and/or just do the estimation inline (in-mem -- don't try to regress over restarts)
-# * exit-now response back to workers
+#   -> type up the mlr --onidx having-fields ... then cut -o -f ndone,ntotal,t then tail/decimate ... | estdonetime
 
 import sys, os, time, socket, getopt
 
