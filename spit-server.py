@@ -2,9 +2,6 @@
 
 # xxx to do:
 # * estdone file; and/or just do the estimation inline (in-mem -- don't try to regress over restarts)
-# * open/'a' -> persistent handle w/ flush
-# * askn verb??
-# * hands-off, leave-running option for spit-workers allowing opp'ty to reload server?
 
 import sys, os, time, socket, getopt
 
