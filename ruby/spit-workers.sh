@@ -121,7 +121,7 @@ main() {
     usage
   fi
   if [ -z "$program_to_run_with_task_id" ]; then
-    echo "$0: need task-workder command." 1>&2
+    echo "$0: need task-worker command." 1>&2
     echo "" 1>&2
     usage
   fi
@@ -157,7 +157,6 @@ main() {
     trap 'kill $pids; sleep 1; kill $pids' 1 2 3 15
   done
   wait
-
 }
 
 # ----------------------------------------------------------------
