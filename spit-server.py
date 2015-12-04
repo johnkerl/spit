@@ -3,6 +3,9 @@
 # xxx to do:
 # * estdone file; and/or just do the estimation inline (in-mem -- don't try to regress over restarts)
 #   -> type up the mlr --onidx having-fields ... then cut -o -f ndone,ntotal,t then tail/decimate ... | estdonetime
+# * stubborn test
+# * -z no -i/-o/-d etc; & iff
+# * default -o/-d from -i
 
 import sys, os, time, socket, getopt
 
@@ -18,8 +21,8 @@ def usage(ostream):
 Options:
 -p {port number}   Defaults to %d if omitted.
 -i {infile}        Defaults to stdin.
--o {outfile}       Defaults to stdout.
--d {donefile}      Required.
+-o {outfile}       Defaults to infile name + ".out".
+-d {donefile}      Defaults to infile name + ".done".
 -z                 Reply to all client work-requests with 'exit-now'.
 
 The workfile should contain work IDs, one per line.  What this means is up to
@@ -34,6 +37,7 @@ def main():
 	infile         = None
 	outfile        = None
 	donefile       = None
+	infile_display_name = "stdin"
 	reply_exit_now = False
 
 	try:
@@ -48,6 +52,7 @@ def main():
 			port_number = int(arg)
 	    elif opt == '-i':
 			infile = arg
+			infile_display_name = infile
 	    elif opt == '-o':
 			outfile = arg
 	    elif opt == '-d':
@@ -64,9 +69,10 @@ def main():
 			print >> sys.stderr, "Unhandled option \"%s\"." % opt
 			sys.exit(1)
 
+	if outfile == None:
+		outfile = infile_display_name + ".out"
 	if donefile == None:
-		usage(sys.stderr)
-		sys.exit(1)
+		donefile = infile_display_name + ".done"
 	non_option_arg_count = len(non_option_args)
 	if non_option_arg_count != 0:
 		usage(sys.stderr)
