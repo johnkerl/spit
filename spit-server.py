@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
 # xxx to do:
-# * estdone file; and/or just do the estimation inline (in-mem -- don't try to regress over restarts)
-#   -> type up the mlr --onidx having-fields ... then cut -o -f ndone,ntotal,t then tail/decimate ... | estdonetime
 # * stubborn test
 # * -z no -i/-o/-d etc; & iff
 
