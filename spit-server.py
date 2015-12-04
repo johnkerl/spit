@@ -38,6 +38,7 @@ def main():
 	donefile       = None
 	infile_display_name = "stdin"
 	reply_exit_now = False
+	done_time_estimator_window_size = 100 # xxx parameterize
 
 	try:
 		optargs, non_option_args = getopt.getopt(sys.argv[1:], "p:i:o:d:zh", ['help'])
@@ -77,7 +78,8 @@ def main():
 		usage(sys.stderr)
 		sys.exit(1)
 
-	server = SpitServer(port_number, infile, outfile, donefile, reply_exit_now)
+	server = SpitServer(port_number, infile, outfile, donefile, reply_exit_now,
+		done_time_estimator_window_size)
 	server.server_loop()
 
 # ================================================================

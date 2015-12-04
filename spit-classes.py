@@ -1,4 +1,4 @@
-import sys, os, time, socket, errno
+import sys, os, time, socket, errno, math
 
 BUFSIZE                         = 1024
 DEFAULT_SPIT_SERVER_HOST_NAME   = 'localhost'
@@ -71,11 +71,13 @@ class SpitClient:
 # ================================================================
 class SpitServer:
 
-	def __init__(self, port_number, infile, outfile, donefile, reply_exit_now):
+	def __init__(self, port_number, infile, outfile, donefile, reply_exit_now, estimator_window_size):
 		self.task_ids_to_do    = set()
 		self.task_ids_assigned = set()
 		self.task_ids_done     = set()
 		self.task_ids_failed   = set()
+
+		self.done_time_estimator = None
 
 		cprint("%s,op=read_in_file,port=%d,%s" % (self.format_time(), port_number, self.format_counts()))
 		self.task_ids_to_do = self.load_file_to_set(infile)
@@ -91,6 +93,8 @@ class SpitServer:
 		else:
 			self.outhandle = self.create_append_handle(outfile)
 		self.donehandle = self.create_append_handle(donefile)
+
+		self.done_time_estimator = DoneTimeEstimator(estimator_window_size, 100.0)
 
 		self.reply_exit_now = reply_exit_now
 
@@ -149,13 +153,23 @@ class SpitServer:
 		nassigned = len(self.task_ids_assigned)
 		ndone     = len(self.task_ids_done)
 		nfailed   = len(self.task_ids_failed)
-		ntotal = ntodo + nassigned + ndone + nfailed
+		ntotal    = ntodo + nassigned + ndone + nfailed
 
 		string  = "ntodo="+str(ntodo)
 		string += ",nassigned="+str(nassigned)
 		string += ",ndone="+str(ndone)
 		string += ",nfailed="+str(nfailed)
 		string += ",ntotal="+str(ntotal)
+		if ntotal > 0:
+			percent = (100.0 * ndone) / ntotal
+			string += ",percent="+str(percent)
+
+		if self.done_time_estimator != None:
+			self.done_time_estimator.add(time.time(), percent)
+			if self.done_time_estimator.size >= 4:
+				est_time, bar = self.done_time_estimator.predict_dhms()
+				string += ",est_time="+est_time
+				string += ",est_time_uncert="+bar
 
 		return string
 
@@ -280,3 +294,121 @@ class SpitServer:
 	def mark_to_done_file(self, task_id):
 		self.donehandle.write(task_id+'\n')
 		self.donehandle.flush()
+
+# ================================================================
+class DoneTimeEstimator:
+	def __init__(self, winsz, goalval):
+		self.time_offsets = []
+		self.value_offsets = []
+
+		# Subtract start time for linear regression: epoch seconds are ~1.5
+		# gigaseconds (2015) so shifting by start time makes for more
+		# reasonable-sized numbers for the regression.
+		self.start_time = time.time()
+		self.goalval = goalval
+
+		self.capacity = winsz
+		self.size = 0
+		self.idx = 0;
+
+	def add(self, timestamp, curval):
+		time_offset = timestamp - self.start_time
+		value_offset = self.goalval - curval
+		if self.size < self.capacity:
+			self.time_offsets.append(time_offset)
+			self.value_offsets.append(value_offset)
+			self.idx += 1
+			self.size += 1
+		else:
+			self.idx = (self.idx + 1) % self.capacity
+			self.time_offsets[self.idx] = time_offset
+			self.value_offsets[self.idx] = value_offset
+
+	# Returns [number of seconds from current time, error bar]
+	def predict_dhms(self):
+		etc_sec, bar_sec = self.predict_seconds()
+		return [self.dhms(etc_sec), self.dhms(bar_sec)]
+
+	def predict_seconds(self):
+
+		m, b, sm, sb = self.linear_regression(self.time_offsets, self.value_offsets)
+
+		# "etc" = "estimated time of completion"
+		if m == 0.0:
+			return [None, None]
+
+		# Compute estimated done time, relative to start
+		etc_offset_sec = -b/m 
+
+		# Compute error bar on the estimate
+		lo_offset_sec = -b/m
+		hi_offset_sec = -b/m
+		for mm in [m-2*sm,m,m+2*sm]:
+			for bb in [b-2*sb,b,b+2*sb]:
+				ss = -bb/mm
+				lo_offset_sec = min(lo_offset_sec, ss)
+				hi_offset_sec = max(hi_offset_sec, ss)
+		bar_sec = abs(etc_offset_sec - lo_offset_sec)
+		bar_sec = max(bar_sec, abs(etc_offset_sec - hi_offset_sec))
+
+		etc_sec = etc_offset_sec + self.start_time - time.time()
+
+		return [etc_sec, bar_sec]
+
+	def linear_regression(self, xs, ys):
+		sumxi   = 0.0
+		sumyi   = 0.0
+		sumxiyi = 0.0
+		sumxi2  = 0.0
+
+		N = len(xs)
+		for i in range(0, N):
+			x = xs[i]
+			y = ys[i]
+			sumxi   += x
+			sumyi   += y
+			sumxiyi += x*y
+			sumxi2  += x*x
+
+		D =  N * sumxi2 - sumxi**2
+		m = (N * sumxiyi - sumxi * sumyi) / D
+		b = (-sumxi * sumxiyi + sumxi2 * sumyi) / D
+
+		# Young 1962, pp. 122-124.  Compute sample variance of linear
+		# approximations, then variances of m and b.
+		var_z = 0.0
+		for i in range(0, N):
+			var_z += (m * xs[i] + b - ys[i])**2
+		var_z /= N
+
+		var_m = (N * var_z) / D
+		var_b = (var_z * sumxi2) / D
+
+		return [m, b, math.sqrt(var_m), math.sqrt(var_b)]
+
+	def dhms(self, seconds):
+		if seconds == None:
+			return "TBD"
+
+		seconds  = int(seconds)
+
+		ss  = seconds % 60
+		seconds = seconds / 60
+
+		mm  = seconds % 60
+		seconds = seconds / 60
+
+		hh  = seconds % 24
+		seconds = seconds / 24
+
+		dd  = seconds
+
+		if dd == 0 and hh == 0 and mm == 0:
+			return "%us" % (ss)
+		elif dd == 0 and hh == 0:
+			return "%um:%02us" % (mm, ss)
+		elif dd == 0:
+			return "%uh:%02um:%02us" % (hh, mm, ss)
+		else:
+			return "%ud:%02uh:%02um:%02us" % (dd, hh, mm, ss)
+
