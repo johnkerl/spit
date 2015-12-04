@@ -5,7 +5,6 @@
 #   -> type up the mlr --onidx having-fields ... then cut -o -f ndone,ntotal,t then tail/decimate ... | estdonetime
 # * stubborn test
 # * -z no -i/-o/-d etc; & iff
-# * default -o/-d from -i
 
 import sys, os, time, socket, getopt
 
