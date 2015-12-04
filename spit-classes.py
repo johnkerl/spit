@@ -78,6 +78,8 @@ class SpitServer:
 		self.task_ids_failed   = set()
 
 		self.done_time_estimator = None
+		self.est_time = "TBD"
+		self.est_time_uncert = "TBD"
 
 		cprint("%s,op=read_in_file,port=%d,%s" % (self.format_time(), port_number, self.format_counts()))
 		self.task_ids_to_do = self.load_file_to_set(infile)
@@ -95,6 +97,7 @@ class SpitServer:
 		self.donehandle = self.create_append_handle(donefile)
 
 		self.done_time_estimator = DoneTimeEstimator(estimator_window_size, 100.0)
+		self.update_done_time_estimate()
 
 		self.reply_exit_now = reply_exit_now
 
@@ -163,13 +166,11 @@ class SpitServer:
 		if ntotal > 0:
 			percent = (100.0 * ndone) / ntotal
 			string += ",percent="+str(percent)
+		else:
+			string += ",percent="
 
-		if self.done_time_estimator != None:
-			self.done_time_estimator.add(time.time(), percent)
-			if self.done_time_estimator.size >= 4:
-				est_time, bar = self.done_time_estimator.predict_dhms()
-				string += ",est_time="+est_time
-				string += ",est_time_uncert="+bar
+		string += ",est_time="+self.est_time
+		string += ",est_time_uncert="+self.est_time_uncert
 
 		return string
 
@@ -256,6 +257,8 @@ class SpitServer:
 			self.task_ids_assigned.remove(task_id)
 			self.task_ids_done.add(task_id)
 			self.mark_to_done_file(task_id)
+			self.update_done_time_estimate()
+
 			cprint("%s,op=mark-done,ok=true,h=%s,w=%s,%s,task_id=%s" % (
 				(self.format_time(), client_hostname, worker_id, self.format_counts(), payload)))
 			return "ack"
@@ -263,6 +266,21 @@ class SpitServer:
 			cprint("%s,op=mark-done,ok=rando,h=%s,w=%s,%s,task_id=%s" % (
 				(self.format_time(), client_hostname, worker_id, self.format_counts(), payload)))
 			return "nak"
+
+
+	# ----------------------------------------------------------------
+	def update_done_time_estimate(self):
+		ntodo     = len(self.task_ids_to_do)
+		nassigned = len(self.task_ids_assigned)
+		ndone     = len(self.task_ids_done)
+		nfailed   = len(self.task_ids_failed)
+		ntotal    = ntodo + nassigned + ndone + nfailed
+		percent   = 0.0
+		if ntotal != 0:
+			percent = (100.0 * ndone) / ntotal
+		self.done_time_estimator.add(time.time(), percent)
+		if self.done_time_estimator.size >= 4:
+			self.est_time, self.est_time_uncert = self.done_time_estimator.predict_dhms()
 
 	# ----------------------------------------------------------------
 	def handle_mark_failed(self, client_hostname, worker_id, payload):
